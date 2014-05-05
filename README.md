@@ -46,3 +46,7 @@ cd spark_gce
 python spark_gce.py
 ```
 
+
+Need Help?
+-------------
+Drop us an email: mayur@sigmoidanalytics.com
