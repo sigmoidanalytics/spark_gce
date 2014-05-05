@@ -3,6 +3,7 @@ Spark GCE
 
 Spark GCE is like Spark Ec2 but for those who run their cluster on Google Cloud.
 
+  - Make Sure you have installed and authenticated gcutils where you are running this script.
   - Helps you launch a spark cluster in the Google Cloud
   - Installs and Configures everything Automatically
   - Starts the Shark server Automatically
