@@ -245,14 +245,7 @@ def get_cluster_ips():
 	return (master_nodes, slave_nodes)
 
 def enable_sudo(master,command):
-	'''
-	ssh_command(master,"echo \"import os\" > setuid.py ")
-	ssh_command(master,"echo \"import sys\" >> setuid.py")
-	ssh_command(master,"echo \"import commands\" >> setuid.py")
-	ssh_command(master,"echo \"command=sys.argv[1]\" >> setuid.py")
-	ssh_command(master,"echo \"os.setuid(os.geteuid())\" >> setuid.py")
-	ssh_command(master,"echo \"print commands.getstatusoutput(\"command\")\" >> setuid.py")
-	'''
+	
 	os.system("ssh -i " + identity_file + " -t -o 'UserKnownHostsFile=/dev/null' -o 'CheckHostIP=no' -o 'StrictHostKeyChecking no' "+ username + "@" + master + " '" + command + "'")
 
 def ssh_thread(host,command):
@@ -261,16 +254,16 @@ def ssh_thread(host,command):
 	
 def install_java(master_nodes,slave_nodes):
 
-	print '[ Installing Java and Development Tools ]'
+	print '[ Installing Java 1.7.0 and Development Tools on All machines]'
 	master = master_nodes[0]
 	
-	master_thread = threading.Thread(target=ssh_thread, args=(master,"sudo yum install -y java-1.7.0-openjdk;sudo yum install -y java-1.7.0-openjdk-devel;sudo yum groupinstall \'Development Tools\' -y"))
+	master_thread = threading.Thread(target=ssh_thread, args=(master,"sudo yum install -y java-1.7.0-openjdk > /dev/null 2>&1;sudo yum install -y java-1.7.0-openjdk-devel > /dev/null 2>&1;sudo yum groupinstall \'Development Tools\' -y > /dev/null 2>&1"))
 	master_thread.start()
 	
 	#ssh_thread(master,"sudo yum install -y java-1.7.0-openjdk")
 	for slave in slave_nodes:
 		
-		slave_thread = threading.Thread(target=ssh_thread, args=(slave,"sudo yum install -y java-1.7.0-openjdk;sudo yum install -y java-1.7.0-openjdk-devel;sudo yum groupinstall \'Development Tools\' -y"))
+		slave_thread = threading.Thread(target=ssh_thread, args=(slave,"sudo yum install -y java-1.7.0-openjdk > /dev/null 2>&1;sudo yum install -y java-1.7.0-openjdk-devel > /dev/null 2>&1;sudo yum groupinstall \'Development Tools\' -y > /dev/null 2>&1"))
 		slave_thread.start()
 		
 		#ssh_thread(slave,"sudo yum install -y java-1.7.0-openjdk")
@@ -322,7 +315,9 @@ def attach_drive(master_nodes,slave_nodes):
 	command = shlex.split(command)		
 	subprocess.call(command)
 
-	master_thread = threading.Thread(target=ssh_thread, args=(master,"sudo mkfs.ext3 /dev/disk/by-id/google-"+ cluster_name + "-m-disk " + " -F < /dev/null"))
+	print '[ Formating Disk on Master ]'
+
+	master_thread = threading.Thread(target=ssh_thread, args=(master,"sudo mkfs.ext3 /dev/disk/by-id/google-"+ cluster_name + "-m-disk " + " -F < /dev/null > /dev/null 2>&1"))
 	master_thread.start()
 
 	print '[ Adding new 500GB drive on Slaves ]'
@@ -339,7 +334,8 @@ def attach_drive(master_nodes,slave_nodes):
 		command = 'gcutil --project='+ project +' attachdisk --zone=' + zone +' --disk=' + cluster_name + '-s' + str(i) + '-disk ' + cluster_name + '-slave' +  str(i)
 		command = shlex.split(command)		
 		subprocess.call(command)
-		slave_thread = threading.Thread(target=ssh_thread, args=(slave,"sudo mkfs.ext3 /dev/disk/by-id/google-" + cluster_name + "-s" + str(i) + "-disk -F < /dev/null"))
+		print '[ Formating Disk on Slave :' + slave + ' ]'
+		slave_thread = threading.Thread(target=ssh_thread, args=(slave,"sudo mkfs.ext3 /dev/disk/by-id/google-" + cluster_name + "-s" + str(i) + "-disk -F < /dev/null > /dev/null 2>&1"))
 		slave_thread.start()
 		i=i+1
 
@@ -355,150 +351,148 @@ def attach_drive(master_nodes,slave_nodes):
 		enable_sudo(slave,"sudo chown " + username + ":" + username + " /mnt")
 		i=i+1
 
-	print '[ All volumns mounted, will be available at /mnt ]'
+	print '\n\n[ All volumns mounted, will be available at /mnt ]'
 
 def setup_spark(master_nodes,slave_nodes):
-
-	print '[ Downloading Binaries ]'
+	
+	print '\n\n[ Downloading Spark Binaries ]'
 	
 	master = master_nodes[0]
-	
-	ssh_command(master,"rm -fr sigmoid")
-	ssh_command(master,"mkdir sigmoid")
-	ssh_command(master,"cd sigmoid;wget https://s3.amazonaws.com/sigmoidanalytics-builds/spark/0.9.1/gce/spark-0.9.1-bin-cdh4.tgz")
-	ssh_command(master,"cd sigmoid;wget https://s3.amazonaws.com/sigmoidanalytics-builds/spark/0.9.1/gce/scala.tgz")
-	ssh_command(master,"cd sigmoid;tar zxf spark-0.9.1-bin-cdh4.tgz;rm spark-0.9.1-bin-cdh4.tgz")
-	ssh_command(master,"cd sigmoid;tar zxf scala.tgz;rm scala.tgz")
-	
+
+	ssh_command(master,"rm -fr spark-gce;mkdir spark-gce")
+	ssh_command(master,"cd spark-gce;wget http://d3kbcqa49mib13.cloudfront.net/spark-0.9.1-bin-hadoop2.tgz")
+	ssh_command(master,"cd spark-gce;wget http://www.scala-lang.org/files/archive/scala-2.10.3.tgz")
+	ssh_command(master,"cd spark-gce;tar zxf spark-0.9.1-bin-hadoop2.tgz;rm spark-0.9.1-bin-hadoop2.tgz;ln -s spark-0.9.1-bin-hadoop2 spark")
+	ssh_command(master,"cd spark-gce;tar zxf scala-2.10.3.tgz;rm scala-2.10.3.tgz;ln -s scala-2.10.3 scala")	
 
 	print '[ Updating Spark Configurations ]'
-	ssh_command(master,"cd sigmoid;cd spark-0.9.1-bin-cdh4/conf;cp spark-env.sh.template spark-env.sh")
-	ssh_command(master,"cd sigmoid;cd spark-0.9.1-bin-cdh4/conf;echo 'export SCALA_HOME=\"/home/`whoami`/sigmoid/scala\"' >> spark-env.sh")
-	ssh_command(master,"cd sigmoid;cd spark-0.9.1-bin-cdh4/conf;echo 'export SPARK_MEM=2454m' >> spark-env.sh")
-	ssh_command(master,"cd sigmoid;cd spark-0.9.1-bin-cdh4/conf;echo \'SPARK_JAVA_OPTS+=\\\"-Dspark.local.dir=/mnt/spark \\\"\' >> spark-env.sh")
-	ssh_command(master,"cd sigmoid;cd spark-0.9.1-bin-cdh4/conf;echo 'export SPARK_JAVA_OPTS' >> spark-env.sh")
-	ssh_command(master,"cd sigmoid;cd spark-0.9.1-bin-cdh4/conf;echo 'export SPARK_MASTER_IP=PUT_MASTER_IP_HERE' >> spark-env.sh")
-	ssh_command(master,"cd sigmoid;cd spark-0.9.1-bin-cdh4/conf;echo 'export MASTER=spark://PUT_MASTER_IP_HERE:7077' >> spark-env.sh")
-	ssh_command(master,"cd sigmoid;cd spark-0.9.1-bin-cdh4/conf;echo 'export JAVA_HOME=/usr/lib/jvm/java-1.7.0-openjdk-1.7.0.55.x86_64' >> spark-env.sh")
+	ssh_command(master,"cd spark-gce;cd spark/conf;cp spark-env.sh.template spark-env.sh")
+	ssh_command(master,"cd spark-gce;cd spark/conf;echo 'export SCALA_HOME=\"/home/`whoami`/spark-gce/scala\"' >> spark-env.sh")
+	ssh_command(master,"cd spark-gce;cd spark/conf;echo 'export SPARK_MEM=2454m' >> spark-env.sh")
+	ssh_command(master,"cd spark-gce;cd spark/conf;echo \"SPARK_JAVA_OPTS+=\\\" -Dspark.local.dir=/mnt/spark \\\"\" >> spark-env.sh")	
+	ssh_command(master,"cd spark-gce;cd spark/conf;echo 'export SPARK_JAVA_OPTS' >> spark-env.sh")
+	ssh_command(master,"cd spark-gce;cd spark/conf;echo 'export SPARK_MASTER_IP=PUT_MASTER_IP_HERE' >> spark-env.sh")
+	ssh_command(master,"cd spark-gce;cd spark/conf;echo 'export MASTER=spark://PUT_MASTER_IP_HERE:7077' >> spark-env.sh")
+	ssh_command(master,"cd spark-gce;cd spark/conf;echo 'export JAVA_HOME=/usr/lib/jvm/java-1.7.0-openjdk-1.7.0.55.x86_64' >> spark-env.sh")
 	
-
+	ssh_command(master,"cd spark-gce;cd spark/conf;rm slaves")
 	for slave in slave_nodes:
-		ssh_command(master,"echo " + slave + " >> sigmoid/spark-0.9.1-bin-cdh4/conf/slaves")
+		ssh_command(master,"echo " + slave + " >> spark-gce/spark/conf/slaves")
 
 	
-	ssh_command(master,"sed -i \"s/PUT_MASTER_IP_HERE/$(/sbin/ifconfig eth0 | grep \"inet addr:\" | cut -d: -f2 | cut -d\" \" -f1)/g\" sigmoid/spark-0.9.1-bin-cdh4/conf/spark-env.sh")
+	ssh_command(master,"sed -i \"s/PUT_MASTER_IP_HERE/$(/sbin/ifconfig eth0 | grep \"inet addr:\" | cut -d: -f2 | cut -d\" \" -f1)/g\" spark-gce/spark/conf/spark-env.sh")
 	
-	ssh_command(master,"chmod +x sigmoid/spark-0.9.1-bin-cdh4/conf/spark-env.sh")
+	ssh_command(master,"chmod +x spark-gce/spark/conf/spark-env.sh")
 
 	print '[ Rsyncing Spark to all slaves ]'
 
 	for slave in slave_nodes:
-		ssh_command(master,"rsync -za /home/" + username + "/sigmoid " + slave + ":")
+		ssh_command(master,"rsync -za /home/" + username + "/spark-gce " + slave + ":")
 		ssh_command(slave,"mkdir /mnt/spark")
 	
 	ssh_command(master,"mkdir /mnt/spark")
 	print '[ Starting Spark Cluster ]'
-	ssh_command(master,"sigmoid/spark-0.9.1-bin-cdh4/sbin/start-all.sh")
+	ssh_command(master,"spark-gce/spark/sbin/start-all.sh")
 	
-
 	setup_shark(master_nodes,slave_nodes)
 	
 	setup_hadoop(master_nodes,slave_nodes)
 
-
-	print "\n\nSpark Master Started, WebUI available at : http://" + master + ":8080"
+	print "\n\nSpark Cluster Started, WebUI available at : http://" + master + ":8080"
+	
 
 def setup_hadoop(master_nodes,slave_nodes):
 
 	master = master_nodes[0]
 	print '[ Downloading hadoop ]'
 	
-	ssh_command(master,"cd sigmoid;wget https://s3.amazonaws.com/sigmoidanalytics-builds/hadoop/hadoop-2.0.0-cdh4.2.0.tar.gz")
-	ssh_command(master,"cd sigmoid;tar zxf hadoop-2.0.0-cdh4.2.0.tar.gz")
-	ssh_command(master,"cd sigmoid;rm hadoop-2.0.0-cdh4.2.0.tar.gz")
-
+	ssh_command(master,"cd spark-gce;wget http://archive.cloudera.com/cdh5/cdh/5/hadoop-2.2.0-cdh5.0.0-beta-1.tar.gz")
+	ssh_command(master,"cd spark-gce;tar zxf hadoop-2.2.0-cdh5.0.0-beta-1.tar.gz;rm hadoop-2.2.0-cdh5.0.0-beta-1.tar.gz;ln -s hadoop-2.2.0-cdh5.0.0-beta-1 hadoop")
+	
 	print '[ Configuring Hadoop ]'
 	
 	#Configure .bashrc
-	ssh_command(master,"echo '#HADOOP_CONFS' >> .bashrc")
+	ssh_command(master,"echo '\#HADOOP_CONFS' >> .bashrc")
 	ssh_command(master,"echo 'export JAVA_HOME=/usr/lib/jvm/java-1.7.0-openjdk-1.7.0.55.x86_64' >> .bashrc")
-	ssh_command(master,"echo 'export HADOOP_INSTALL=/home/`whoami`/sigmoid/hadoop-2.0.0-cdh4.2.0' >> .bashrc")
+	ssh_command(master,"echo 'export HADOOP_INSTALL=/home/`whoami`/spark-gce/hadoop' >> .bashrc")
 	ssh_command(master,"echo 'export PATH=$PATH:\$HADOOP_INSTALL/bin' >> .bashrc")
 	ssh_command(master,"echo 'export PATH=$PATH:\$HADOOP_INSTALL/sbin' >> .bashrc")
 	ssh_command(master,"echo 'export HADOOP_MAPRED_HOME=\$HADOOP_INSTALL' >> .bashrc")
 	ssh_command(master,"echo 'export HADOOP_COMMON_HOME=\$HADOOP_INSTALL' >> .bashrc")
 	ssh_command(master,"echo 'export HADOOP_HDFS_HOME=\$HADOOP_INSTALL' >> .bashrc")
 	ssh_command(master,"echo 'export YARN_HOME=\$HADOOP_INSTALL' >> .bashrc")
+	
+	ssh_command(master,"cd spark-gce/hadoop/etc/hadoop/;cp mapred-site.xml.template mapred-site.xml")
+	
+	#Generate Confs
+	ssh_command(master,"cd spark-gce/hadoop/etc/hadoop/;sed -i \"s/<\/configuration>//g\" core-site.xml")
+	ssh_command(master,"cd spark-gce/hadoop/etc/hadoop/;echo \"<property>\" >> core-site.xml;echo \"<name>fs.default.name</name>\" >> core-site.xml;echo \"<value>hdfs://PUT-MASTER-IP:9000</value>\" >> core-site.xml;echo \"</property>\" >> core-site.xml;echo \"</configuration>\" >> core-site.xml")
+	#Config masterIP in Core-site
+	ssh_command(master,"cd spark-gce/hadoop/etc/hadoop/;sed -i \"s/PUT-MASTER-IP/$(/sbin/ifconfig eth0 | grep \"inet addr:\" | cut -d: -f2 | cut -d\" \" -f1)/g\" core-site.xml")
+	#Generate hdfs-site.xml
+	ssh_command(master,"cd spark-gce/hadoop/etc/hadoop/;sed -i \"s/<\/configuration>//g\" hdfs-site.xml")
+	ssh_command(master,"cd spark-gce/hadoop/etc/hadoop/;echo \"<property>\" >> hdfs-site.xml;echo \"<name>dfs.replication</name>\" >> hdfs-site.xml;echo \"<value>1</value>\" >> hdfs-site.xml;echo \"</property>\" >> hdfs-site.xml;echo \"<property>\" >> hdfs-site.xml;echo \"<name>dfs.namenode.name.dir</name>\" >>hdfs-site.xml;echo \"<value>/mnt/hadoop/hdfs/namenode</value>\" >> hdfs-site.xml;echo \"</property>\" >> hdfs-site.xml;echo \"<property>\" >> hdfs-site.xml;echo \"<name>dfs.datanode.data.dir</name>\" >> hdfs-site.xml;echo \"<value>/mnt/hadoop/hdfs/datanode</value>\" >> hdfs-site.xml;echo \"</property>\" >> hdfs-site.xml;echo \"</configuration>\" >> hdfs-site.xml")
 
-	#Remove *-site.xmls
-	ssh_command(master,"cd sigmoid/hadoop-2.0.0-cdh4.2.0;rm etc/hadoop/core-site.xml")
-	ssh_command(master,"cd sigmoid/hadoop-2.0.0-cdh4.2.0;rm etc/hadoop/yarn-site.xml")
-	ssh_command(master,"cd sigmoid/hadoop-2.0.0-cdh4.2.0;rm etc/hadoop/hdfs-site.xml")
-	#Download Our Confs
-	ssh_command(master,"cd sigmoid/hadoop-2.0.0-cdh4.2.0/etc/hadoop/;wget https://s3.amazonaws.com/sigmoidanalytics-builds/spark/0.9.1/gce/configs/core-site.xml")
-	ssh_command(master,"cd sigmoid/hadoop-2.0.0-cdh4.2.0/etc/hadoop/;wget https://s3.amazonaws.com/sigmoidanalytics-builds/spark/0.9.1/gce/configs/hdfs-site.xml")
-	ssh_command(master,"cd sigmoid/hadoop-2.0.0-cdh4.2.0/etc/hadoop/;wget https://s3.amazonaws.com/sigmoidanalytics-builds/spark/0.9.1/gce/configs/mapred-site.xml")
-	ssh_command(master,"cd sigmoid/hadoop-2.0.0-cdh4.2.0/etc/hadoop/;wget https://s3.amazonaws.com/sigmoidanalytics-builds/spark/0.9.1/gce/configs/yarn-site.xml")
+	#Generate mapred-site.xml
+	ssh_command(master,"cd spark-gce/hadoop/etc/hadoop/;sed -i \"s/<\/configuration>//g\" mapred-site.xml")
+	ssh_command(master,"cd spark-gce/hadoop/etc/hadoop/;echo \"<property>\" >> mapred-site.xml;echo \"<name>mapreduce.framework.name</name>\" >> mapred-site.xml;echo \"<value>yarn</value>\" >> mapred-site.xml;echo \"</property>\" >> mapred-site.xml;echo \"</configuration>\" >> mapred-site.xml")
 
-	#Config Core-site
-	ssh_command(master,"sed -i \"s/PUT-MASTER-IP/$(/sbin/ifconfig eth0 | grep \"inet addr:\" | cut -d: -f2 | cut -d\" \" -f1)/g\" sigmoid/hadoop-2.0.0-cdh4.2.0/etc/hadoop/core-site.xml")
+	#Generate yarn-site.xml
+	ssh_command(master,"cd spark-gce/hadoop/etc/hadoop/;sed -i \"s/<\/configuration>//g\" yarn-site.xml")
+	ssh_command(master,"cd spark-gce/hadoop/etc/hadoop/;echo \"<property>\" >> yarn-site.xml;echo \"<name>yarn.nodemanager.aux-services</name>\" >> yarn-site.xml;echo \"<value>mapreduce_shuffle</value>\" >> yarn-site.xml;echo \"</property>\" >> yarn-site.xml;echo \"<property>\" >> yarn-site.xml;echo \"<name>yarn.nodemanager.aux-services.mapreduce.shuffle.class</name>\" >> yarn-site.xml;echo  \"<value>org.apache.hadoop.mapred.ShuffleHandler</value>\" >> yarn-site.xml;echo \"</property>\" >> yarn-site.xml;echo \"</configuration>\" >> yarn-site.xml")
+	
 
 	#Create data/node dirs
 	ssh_command(master,"mkdir -p /mnt/hadoop/hdfs/namenode;mkdir -p /mnt/hadoop/hdfs/datanode")
 	#Config slaves
-	ssh_command(master,"cd sigmoid/hadoop-2.0.0-cdh4.2.0/etc/hadoop/;rm slaves")
+	ssh_command(master,"cd spark-gce/hadoop/etc/hadoop/;rm slaves")
 	for slave in slave_nodes:
-		ssh_command(master,"cd sigmoid/hadoop-2.0.0-cdh4.2.0/etc/hadoop/;echo " + slave + " >> slaves")
+		ssh_command(master,"cd spark-gce/hadoop/etc/hadoop/;echo " + slave + " >> slaves")
 
 	print '[ Rsyncing with Slaves ]'
 	#Rsync everything
 	for slave in slave_nodes:
-		ssh_command(master,"rsync -za /home/" + username + "/sigmoid " + slave + ":")
+		ssh_command(master,"rsync -za /home/" + username + "/spark-gce " + slave + ":")
 		ssh_command(slave,"mkdir -p /mnt/hadoop/hdfs/namenode;mkdir -p /mnt/hadoop/hdfs/datanode")
 		ssh_command(master,"rsync -za /home/" + username + "/.bashrc " + slave + ":")
 
 	print '[ Formating namenode ]'
 	#Format namenode
-	ssh_command(master,"sigmoid/hadoop-2.0.0-cdh4.2.0/bin/hdfs namenode -format")
+	ssh_command(master,"spark-gce/hadoop/bin/hdfs namenode -format")
 	
 	print '[ Starting DFS ]'
 	#Start dfs
-	ssh_command(master,"sigmoid/hadoop-2.0.0-cdh4.2.0/sbin/start-dfs.sh")
+	ssh_command(master,"spark-gce/hadoop/sbin/start-dfs.sh")
 
 def setup_shark(master_nodes,slave_nodes):
 
 	master = master_nodes[0]
 	print '[ Downloading Shark binaries ]'
 	
-	ssh_command(master,"cd sigmoid;wget https://s3.amazonaws.com/spark-ui/hive-0.11.0-bin.tgz")
-	ssh_command(master,"cd sigmoid;wget https://s3.amazonaws.com/spark-ui/shark-0.9-hadoop-2.0.0-mr1-cdh4.2.0.tar.gz")
-	ssh_command(master,"cd sigmoid;tar zxf hive-0.11.0-bin.tgz")
-	ssh_command(master,"cd sigmoid;tar zxf shark-0.9-hadoop-2.0.0-mr1-cdh4.2.0.tar.gz")
-	ssh_command(master,"rm sigmoid/hive-0.11.0-bin.tgz")
-	ssh_command(master,"rm sigmoid/shark-0.9-hadoop-2.0.0-mr1-cdh4.2.0.tar.gz")
-	
+	ssh_command(master,"cd spark-gce;wget https://s3.amazonaws.com/spark-related-packages/shark-0.9.1-bin-hadoop2.tgz")	
+	ssh_command(master,"cd spark-gce;tar zxf shark-0.9.1-bin-hadoop2.tgz;rm shark-0.9.1-bin-hadoop2.tgz;ln -s shark-0.9.1-bin-hadoop2 shark")
+		
 	print '[ Configuring Shark ]'
-	ssh_command(master,"cd sigmoid/shark/;echo \"export SHARK_MASTER_MEM=1g\" > conf/shark-env.sh")
-	ssh_command(master,"cd sigmoid/shark/;echo \"SPARK_JAVA_OPTS+=-Dspark.kryoserializer.buffer.mb=10 \" >> conf/shark-env.sh")
-	ssh_command(master,"cd sigmoid/shark/;echo \"export SPARK_JAVA_OPTS\" >> conf/shark-env.sh")
-	ssh_command(master,"cd sigmoid/shark/;echo \"export HIVE_HOME=/home/`whoami`/sigmoid/hive-0.11.0-bin\" >> conf/shark-env.sh")
-	ssh_command(master,"cd sigmoid/shark/;echo \"export SPARK_JAVA_OPTS\" >> conf/shark-env.sh")
-	ssh_command(master,"cd sigmoid/shark/;echo \"export MASTER=spark://PUT_MASTER_IP_HERE:7077\" >> conf/shark-env.sh")
-	ssh_command(master,"cd sigmoid/shark/;echo \"export SPARK_HOME=/home/`whoami`/sigmoid/spark-0.9.1-bin-cdh4\" >> conf/shark-env.sh")
+	ssh_command(master,"cd spark-gce/shark/;echo \"export SHARK_MASTER_MEM=1g\" > conf/shark-env.sh")
+	ssh_command(master,"cd spark-gce/shark/;echo \"SPARK_JAVA_OPTS+=\\\" -Dspark.kryoserializer.buffer.mb=10 \\\"\" >> conf/shark-env.sh")
+	ssh_command(master,"cd spark-gce/shark/;echo \"export SPARK_JAVA_OPTS\" >> conf/shark-env.sh")	
+	ssh_command(master,"cd spark-gce/shark/;echo \"export MASTER=spark://PUT_MASTER_IP_HERE:7077\" >> conf/shark-env.sh")
+	ssh_command(master,"cd spark-gce/shark/;echo \"export SPARK_HOME=/home/`whoami`/spark-gce/spark\" >> conf/shark-env.sh")
 	ssh_command(master,"mkdir /mnt/tachyon")
-	ssh_command(master,"cd sigmoid/shark/;echo \"export TACHYON_MASTER=PUT_MASTER_IP_HERE:19998\" >> conf/shark-env.sh")
-	ssh_command(master,"cd sigmoid/shark/;echo \"export TACHYON_WAREHOUSE_PATH=/mnt/tachyon\" >> conf/shark-env.sh")
-	ssh_command(master,"cd sigmoid/shark/;echo \"source /home/`whoami`/sigmoid/spark-0.9.1-bin-cdh4/conf/spark-env.sh\" >> conf/shark-env.sh")	
-	ssh_command(master,"sed -i \"s/PUT_MASTER_IP_HERE/$(/sbin/ifconfig eth0 | grep \"inet addr:\" | cut -d: -f2 | cut -d\" \" -f1)/g\" sigmoid/shark/conf/shark-env.sh")
+	ssh_command(master,"cd spark-gce/shark/;echo \"export TACHYON_MASTER=PUT_MASTER_IP_HERE:19998\" >> conf/shark-env.sh")
+	ssh_command(master,"cd spark-gce/shark/;echo \"export TACHYON_WAREHOUSE_PATH=/mnt/tachyon\" >> conf/shark-env.sh")
+	ssh_command(master,"cd spark-gce/shark/;echo \"export HADOOP_HOME=/home/`whoami`/spark-gce/hadoop\" >> conf/shark-env.sh")	
+	ssh_command(master,"cd spark-gce/shark/;echo \"source /home/`whoami`/spark-gce/spark/conf/spark-env.sh\" >> conf/shark-env.sh")	
+	ssh_command(master,"sed -i \"s/PUT_MASTER_IP_HERE/$(/sbin/ifconfig eth0 | grep \"inet addr:\" | cut -d: -f2 | cut -d\" \" -f1)/g\" spark-gce/shark/conf/shark-env.sh")
 
-	ssh_command(master,"chmod +x sigmoid/shark/conf/shark-env.sh")
+	ssh_command(master,"chmod +x spark-gce/shark/conf/shark-env.sh")
 	
 	print '[ Rsyncing Shark on slaves ]'
 	for slave in slave_nodes:
-		ssh_command(master,"rsync -za /home/" + username + "/sigmoid " + slave + ":")
+		ssh_command(master,"rsync -za /home/" + username + "/spark-gce " + slave + ":")
 
 	print '[ Starting Shark Server ]'
-	ssh_command(master,"cd sigmoid/shark/;./bin/shark --service sharkserver 10000 > log.txt 2>&1 &")
+	ssh_command(master,"cd spark-gce/shark/;./bin/shark --service sharkserver 10000 > log.txt 2>&1 &")
 
 	
 def real_main():
@@ -510,28 +504,28 @@ def real_main():
 	check_gcutils()
 
 	#Launch the cluster
-	launch_cluster()
-
+	#launch_cluster()
+	sys.stdout.write('\n')
 	#Wait some time for machines to bootup
 	print '[ Waiting 120 Seconds for Machines to start up ]'
-	time.sleep(120)
+	#time.sleep(120)
 
 	#Get Master/Slave IP Addresses
 	(master_nodes, slave_nodes) = get_cluster_ips()
 
 	#Install Java and build-essential
 	install_java(master_nodes,slave_nodes)
+	sys.stdout.write('\n')
 
 	#Generate SSH keys and deploy
 	deploy_keys(master_nodes,slave_nodes)
 
 	#Attach a new empty drive and format it
 	attach_drive(master_nodes,slave_nodes)
+	sys.stdout.write('\n')
 
 	#Set up Spark/Shark/Hadoop
 	setup_spark(master_nodes,slave_nodes)
-
-	
 
 
 def main():
