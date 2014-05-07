@@ -2,7 +2,6 @@
 
 ###
 # This script sets up a Spark cluster on Google Compute Engine
-# Sigmoidanalytics.com
 ###
 
 from __future__ import with_statement
@@ -501,13 +500,9 @@ def setup_shark(master_nodes,slave_nodes):
 	print '[ Starting Shark Server ]'
 	ssh_command(master,"cd sigmoid/shark/;./bin/shark --service sharkserver 10000 > log.txt 2>&1 &")
 
-def show_banner():
-
-	os.system("wget -qO- https://s3.amazonaws.com/sigmoidanalytics-builds/spark/0.9.1/gce/configs/banner")
 	
 def real_main():
 
-	show_banner()
 	print "[ Script Started ]"	
 	#Read the arguments
 	read_args()
