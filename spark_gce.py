@@ -376,7 +376,7 @@ def setup_spark(master_nodes,slave_nodes):
 	ssh_command(master,"cd sigmoid;cd spark-0.9.1-bin-cdh4/conf;cp spark-env.sh.template spark-env.sh")
 	ssh_command(master,"cd sigmoid;cd spark-0.9.1-bin-cdh4/conf;echo 'export SCALA_HOME=\"/home/`whoami`/sigmoid/scala\"' >> spark-env.sh")
 	ssh_command(master,"cd sigmoid;cd spark-0.9.1-bin-cdh4/conf;echo 'export SPARK_MEM=2454m' >> spark-env.sh")
-	ssh_command(master,"cd sigmoid;cd spark-0.9.1-bin-cdh4/conf;echo \'SPARK_JAVA_OPTS+=\\\"-Dspark.local.dir=/mnt/spark \\\"\' >> spark-env.sh")
+	ssh_command(master,"cd sigmoid;cd spark-0.9.1-bin-cdh4/conf;echo \"SPARK_JAVA_OPTS+=\\\" -Dspark.local.dir=/mnt/spark \\\"\" >> spark-env.sh")
 	ssh_command(master,"cd sigmoid;cd spark-0.9.1-bin-cdh4/conf;echo 'export SPARK_JAVA_OPTS' >> spark-env.sh")
 	ssh_command(master,"cd sigmoid;cd spark-0.9.1-bin-cdh4/conf;echo 'export SPARK_MASTER_IP=PUT_MASTER_IP_HERE' >> spark-env.sh")
 	ssh_command(master,"cd sigmoid;cd spark-0.9.1-bin-cdh4/conf;echo 'export MASTER=spark://PUT_MASTER_IP_HERE:7077' >> spark-env.sh")
@@ -480,7 +480,7 @@ def setup_shark(master_nodes,slave_nodes):
 	
 	print '[ Configuring Shark ]'
 	ssh_command(master,"cd sigmoid/shark/;echo \"export SHARK_MASTER_MEM=1g\" > conf/shark-env.sh")
-	ssh_command(master,"cd sigmoid/shark/;echo \"SPARK_JAVA_OPTS+=-Dspark.kryoserializer.buffer.mb=10 \" >> conf/shark-env.sh")
+	ssh_command(master,"cd sigmoid/shark/;echo \"SPARK_JAVA_OPTS+=\\\" -Dspark.kryoserializer.buffer.mb=10 \\\"\" >> conf/shark-env.sh")
 	ssh_command(master,"cd sigmoid/shark/;echo \"export SPARK_JAVA_OPTS\" >> conf/shark-env.sh")
 	ssh_command(master,"cd sigmoid/shark/;echo \"export HIVE_HOME=/home/`whoami`/sigmoid/hive-0.11.0-bin\" >> conf/shark-env.sh")
 	ssh_command(master,"cd sigmoid/shark/;echo \"export SPARK_JAVA_OPTS\" >> conf/shark-env.sh")
