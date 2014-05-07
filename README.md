@@ -50,4 +50,6 @@ python spark_gce.py
 
 Need Help?
 -------------
-Drop us an email: mayur@sigmoidanalytics.com
+- Drop us an email: mayur@sigmoidanalytics.com
+- Read Our Blog: http://www.sigmoidanalytics.com/spark-gce/
+- Read Our Wiki: http://docs.sigmoidanalytics.com/index.php/SparkGCE
