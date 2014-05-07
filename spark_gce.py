@@ -504,11 +504,11 @@ def real_main():
 	check_gcutils()
 
 	#Launch the cluster
-	#launch_cluster()
+	launch_cluster()
 	sys.stdout.write('\n')
 	#Wait some time for machines to bootup
 	print '[ Waiting 120 Seconds for Machines to start up ]'
-	#time.sleep(120)
+	time.sleep(120)
 
 	#Get Master/Slave IP Addresses
 	(master_nodes, slave_nodes) = get_cluster_ips()
