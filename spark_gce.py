@@ -23,6 +23,7 @@ from sys import stderr
 import shlex
 import getpass
 import threading
+import json
 
 ###
 # Make sure gcutil is installed and authenticated 
@@ -107,77 +108,16 @@ def setup_network():
 	print '[ Setting up Network & Firewall Entries ]'	
 
 	try:
-		command = 'gcutil addnetwork ' + cluster_name + '-network --project=' + project
-		command = shlex.split(command)		
-		subprocess.call(command)
+		command = 'gcloud compute --project=' + project + ' networks create "' + cluster_name + '-network" --range "10.240.0.0/16"'
 
-		'''
-		command = 'gcutil addfirewall --allowed :22 --project '+ project + ' ssh --network ' + cluster_name +'-network'
 		command = shlex.split(command)		
 		subprocess.call(command)
-
-		command = 'gcutil addfirewall --allowed :8080 --project '+ project + ' spark-webui --network ' + cluster_name +'-network'
-		command = shlex.split(command)		
-		subprocess.call(command)
-		command = 'gcutil addfirewall --allowed :8081 --project '+ project + ' spark-webui2 --network ' + cluster_name +'-network'
-		command = shlex.split(command)		
-		subprocess.call(command)
-		command = 'gcutil addfirewall --allowed :19999 --project '+ project + ' rpc1 --network ' + cluster_name +'-network'
-		command = shlex.split(command)		
-		subprocess.call(command)
-		command = 'gcutil addfirewall --allowed :50030 --project '+ project + ' rpc2 --network ' + cluster_name +'-network'
-		command = shlex.split(command)		
-		subprocess.call(command)
-		command = 'gcutil addfirewall --allowed :50070 --project '+ project + ' rpc3 --network ' + cluster_name +'-network'
-		command = shlex.split(command)		
-		subprocess.call(command)
-		command = 'gcutil addfirewall --allowed :60070 --project '+ project + ' rpc4 --network ' + cluster_name +'-network'
-		command = shlex.split(command)		
-		subprocess.call(command)
-		command = 'gcutil addfirewall --allowed :4040 --project '+ project + ' app-ui --network ' + cluster_name +'-network'
-		command = shlex.split(command)		
-		subprocess.call(command)
-		command = 'gcutil addfirewall --allowed :4041 --project '+ project + ' app-ui2 --network ' + cluster_name +'-network'
-		command = shlex.split(command)		
-		subprocess.call(command)
-		command = 'gcutil addfirewall --allowed :4042 --project '+ project + ' app-ui3 --network ' + cluster_name +'-network'
-		command = shlex.split(command)		
-		subprocess.call(command)
-		command = 'gcutil addfirewall --allowed :4043 --project '+ project + ' app-ui4 --network ' + cluster_name +'-network'
-		command = shlex.split(command)		
-		subprocess.call(command)
-		command = 'gcutil addfirewall --allowed :4044 --project '+ project + ' app-ui5 --network ' + cluster_name +'-network'
-		command = shlex.split(command)		
-		subprocess.call(command)
-		command = 'gcutil addfirewall --allowed :4045 --project '+ project + ' app-ui6 --network ' + cluster_name +'-network'
-		command = shlex.split(command)		
-		subprocess.call(command)
-		command = 'gcutil addfirewall --allowed :10000 --project '+ project + ' shark-server --network ' + cluster_name +'-network'
-		command = shlex.split(command)		
-		subprocess.call(command)
-		command = 'gcutil addfirewall --allowed :50060 --project '+ project + ' rpc5 --network ' + cluster_name +'-network'
-		command = shlex.split(command)		
-		subprocess.call(command)
-		command = 'gcutil addfirewall --allowed :50075 --project '+ project + ' rpc6 --network ' + cluster_name +'-network'
-		command = shlex.split(command)		
-		subprocess.call(command)
-		command = 'gcutil addfirewall --allowed :60060 --project '+ project + ' rpc7 --network ' + cluster_name +'-network'
-		command = shlex.split(command)		
-		subprocess.call(command)
-		command = 'gcutil addfirewall --allowed :60075 --project '+ project + ' rpc8 --network ' + cluster_name +'-network'
-		command = shlex.split(command)		
-		subprocess.call(command)
-
-		'''
 
 		#Uncomment the above and comment the below section if you don't want to open all ports for public.
-		command = 'gcutil addfirewall --allowed tcp:1-65535 --project '+ project + ' all-tcp-open --network ' + cluster_name +'-network'
+		command = 'gcloud compute firewall-rules delete internal --project '+ project
+		command = 'gcloud compute firewall-rules create internal --network ' + cluster_name + '-network --allow tcp udp icmp --project '+ project
 		command = shlex.split(command)		
 		subprocess.call(command)
-		command = 'gcutil addfirewall --allowed udp:1-65535 --project '+ project + ' all-udp-open --network ' + cluster_name +'-network'
-		command = shlex.split(command)		
-		subprocess.call(command)
-		
 		
 	except OSError:
 		print "Failed to setup Network & Firewall. Exiting.."
@@ -187,7 +127,7 @@ def setup_network():
 def launch_master():
 
 	print '[ Launching Master ]'
-	command = 'gcutil --service_version="v1" --project="' + project + '" addinstance "' + cluster_name + '-master" --zone="' + zone + '" --machine_type="' + master_type + '" --network="' + cluster_name + '-network" --external_ip_address="ephemeral" --service_account_scopes="https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/compute,https://www.googleapis.com/auth/devstorage.full_control" --image="https://www.googleapis.com/compute/v1/projects/centos-cloud/global/images/centos-6-v20140415" --persistent_boot_disk="true" --auto_delete_boot_disk="false"'
+	command = 'gcloud compute --project "' + project + '" instances create "' + cluster_name + '-master" --zone "' + zone + '" --machine-type "' + master_type + '" --network "' + cluster_name + '-network" --maintenance-policy "MIGRATE" --scopes "https://www.googleapis.com/auth/devstorage.read_only" --image "https://www.googleapis.com/compute/v1/projects/centos-cloud/global/images/centos-6-v20141218" --boot-disk-type "pd-standard" --boot-disk-device-name "' + cluster_name + '-md"'
 
 	command = shlex.split(command)		
 	subprocess.call(command)
@@ -198,7 +138,9 @@ def launch_slaves():
 	print '[ Launching Slaves ]'
 
 	for s_id in range(1,slave_no+1):
-		command = 'gcutil --service_version="v1" --project="' + project + '" addinstance "' + cluster_name + '-slave' + str(s_id) + '" --zone="' + zone + '" --machine_type="' + slave_type + '" --network="' + cluster_name + '-network" --external_ip_address="ephemeral" --service_account_scopes="https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/compute,https://www.googleapis.com/auth/devstorage.full_control" --image="https://www.googleapis.com/compute/v1/projects/centos-cloud/global/images/centos-6-v20140415" --persistent_boot_disk="true" --auto_delete_boot_disk="false"'
+		
+		command = 'gcloud compute --project "' + project + '" instances create "' + cluster_name + '-slave' + str(s_id) + '" --zone "' + zone + '" --machine-type "' + slave_type + '" --network "' + cluster_name + '-network" --maintenance-policy "MIGRATE" --scopes "https://www.googleapis.com/auth/devstorage.read_only" --image "https://www.googleapis.com/compute/v1/projects/centos-cloud/global/images/centos-6-v20141218" --boot-disk-type "pd-standard" --boot-disk-device-name "' + cluster_name + '-s' + str(s_id) + 'd"'
+
 		command = shlex.split(command)		
 		subprocess.call(command)
 		
@@ -212,36 +154,38 @@ def launch_cluster():
 
 	launch_slaves()
 		
-
-def check_gcutils():
+def check_gcloud():
 	
-	myexec = "gcutil"
-	print '[ Verifying gcutil ]'
+	myexec = "gcloud"
+	print '[ Verifying gcloud ]'
 	try:
-		subprocess.call([myexec, 'whoami'])
+		subprocess.call([myexec, 'info'])
 		
 	except OSError:
-		print "%s executable not found. \n# Make sure gcutil is installed and authenticated\nPlease follow https://developers.google.com/compute/docs/gcutil/" % myexec
+		print "%s executable not found. \n# Make sure gcloud is installed and authenticated\nPlease follow https://cloud.google.com/compute/docs/gcloud-compute/" % myexec
 		sys.exit(1)
 
 def get_cluster_ips():
-	
-	command = 'gcutil --project=' + project + ' listinstances --columns=name,external-ip --format=csv'
+		
+	command = 'gcloud compute --project ' + project + ' instances list --format json'
 	output = subprocess.check_output(command, shell=True)
-	output = output.split("\n")
-	
+	data = json.loads(output)
 	master_nodes=[]
 	slave_nodes=[]
 
-	for line in output:
-		if len(line) >= 5:
-			host_name = line.split(",")[0]
-			host_ip = line.split(",")[1]
+	for instance in data:
+
+		try:
+			host_name = instance['name']		
+			host_ip = instance['networkInterfaces'][0]['accessConfigs'][0]['natIP']
 			if host_name == cluster_name + '-master':
 				master_nodes.append(host_ip)
 			elif cluster_name + '-slave' in host_name:
 				slave_nodes.append(host_ip)
 
+		except:
+			pass
+	
 	# Return all the instances
 	return (master_nodes, slave_nodes)
 
@@ -314,12 +258,13 @@ def attach_drive(master_nodes,slave_nodes):
 
 	print '[ Adding new 500GB drive on Master ]'
 	master = master_nodes[0]
+	
+	command='gcloud compute --project="' + project + '" disks create "' + cluster_name + '-m-disk" --size 500GB --type "pd-standard" --zone ' + zone
 
-	command='gcutil --service_version="v1" --project="' + project + '" adddisk "' + cluster_name + '-m-disk" --size_gb="500" --zone="' + zone + '"'
 	command = shlex.split(command)		
 	subprocess.call(command)
 	
-	command = 'gcutil --project='+ project +' attachdisk --zone=' + zone +' --disk=' + cluster_name + '-m-disk ' + cluster_name + '-master'
+	command = 'gcloud compute --project="' + project + '" instances attach-disk ' + cluster_name + '-master --device-name "' + cluster_name + '-m-disk" --disk ' + cluster_name + '-m-disk --zone ' + zone
 	command = shlex.split(command)		
 	subprocess.call(command)
 
@@ -332,12 +277,14 @@ def attach_drive(master_nodes,slave_nodes):
 	for slave in slave_nodes:
 
 		master = slave
+		
+		command='gcloud compute --project="' + project + '" disks create "' + cluster_name + '-s' + str(i) + '-disk" --size 500GB --type "pd-standard" --zone ' + zone
 
-		command='gcutil --service_version="v1" --project="' + project + '" adddisk "' + cluster_name + '-s' + str(i) + '-disk" --size_gb="500" --zone="' + zone + '"'
 		command = shlex.split(command)		
 		subprocess.call(command)
+			
+		command = 'gcloud compute --project="' + project + '" instances attach-disk ' + cluster_name + '-slave' +  str(i) + ' --disk ' + cluster_name + '-s' + str(i) + '-disk --device-name "' + cluster_name + '-s' + str(i) + '-disk" --zone ' + zone
 	
-		command = 'gcutil --project='+ project +' attachdisk --zone=' + zone +' --disk=' + cluster_name + '-s' + str(i) + '-disk ' + cluster_name + '-slave' +  str(i)
 		command = shlex.split(command)		
 		subprocess.call(command)
 		slave_thread = threading.Thread(target=ssh_thread, args=(slave,"sudo mkfs.ext3 /dev/disk/by-id/google-" + cluster_name + "-s" + str(i) + "-disk -F < /dev/null"))
@@ -366,43 +313,50 @@ def setup_spark(master_nodes,slave_nodes):
 	
 	ssh_command(master,"rm -fr sigmoid")
 	ssh_command(master,"mkdir sigmoid")
-	ssh_command(master,"cd sigmoid;wget https://s3.amazonaws.com/sigmoidanalytics-builds/spark/0.9.1/gce/spark-0.9.1-bin-cdh4.tgz")
+	ssh_command(master,"cd sigmoid;wget https://s3.amazonaws.com/sigmoidanalytics-builds/spark/1.2.0/spark-1.2.0-bin-cdh4.tgz")
 	ssh_command(master,"cd sigmoid;wget https://s3.amazonaws.com/sigmoidanalytics-builds/spark/0.9.1/gce/scala.tgz")
-	ssh_command(master,"cd sigmoid;tar zxf spark-0.9.1-bin-cdh4.tgz;rm spark-0.9.1-bin-cdh4.tgz")
+	ssh_command(master,"cd sigmoid;tar zxf spark-1.2.0-bin-cdh4.tgz;rm spark-1.2.0-bin-cdh4.tgz")
 	ssh_command(master,"cd sigmoid;tar zxf scala.tgz;rm scala.tgz")
 	
 
 	print '[ Updating Spark Configurations ]'
-	ssh_command(master,"cd sigmoid;cd spark-0.9.1-bin-cdh4/conf;cp spark-env.sh.template spark-env.sh")
-	ssh_command(master,"cd sigmoid;cd spark-0.9.1-bin-cdh4/conf;echo 'export SCALA_HOME=\"/home/`whoami`/sigmoid/scala\"' >> spark-env.sh")
-	ssh_command(master,"cd sigmoid;cd spark-0.9.1-bin-cdh4/conf;echo 'export SPARK_MEM=2454m' >> spark-env.sh")
-	ssh_command(master,"cd sigmoid;cd spark-0.9.1-bin-cdh4/conf;echo \"SPARK_JAVA_OPTS+=\\\" -Dspark.local.dir=/mnt/spark \\\"\" >> spark-env.sh")
-	ssh_command(master,"cd sigmoid;cd spark-0.9.1-bin-cdh4/conf;echo 'export SPARK_JAVA_OPTS' >> spark-env.sh")
-	ssh_command(master,"cd sigmoid;cd spark-0.9.1-bin-cdh4/conf;echo 'export SPARK_MASTER_IP=PUT_MASTER_IP_HERE' >> spark-env.sh")
-	ssh_command(master,"cd sigmoid;cd spark-0.9.1-bin-cdh4/conf;echo 'export MASTER=spark://PUT_MASTER_IP_HERE:7077' >> spark-env.sh")
-	ssh_command(master,"cd sigmoid;cd spark-0.9.1-bin-cdh4/conf;echo 'export JAVA_HOME=/usr/lib/jvm/java-1.7.0-openjdk-1.7.0.55.x86_64' >> spark-env.sh")
+	ssh_command(master,"cd sigmoid;cd spark-1.2.0-bin-cdh4/conf;cp spark-env.sh.template spark-env.sh")
+	ssh_command(master,"cd sigmoid;cd spark-1.2.0-bin-cdh4/conf;echo 'export SCALA_HOME=\"/home/`whoami`/sigmoid/scala\"' >> spark-env.sh")
+	ssh_command(master,"cd sigmoid;cd spark-1.2.0-bin-cdh4/conf;echo 'export SPARK_MEM=2454m' >> spark-env.sh")
+	ssh_command(master,"cd sigmoid;cd spark-1.2.0-bin-cdh4/conf;echo \"SPARK_JAVA_OPTS+=\\\" -Dspark.local.dir=/mnt/spark \\\"\" >> spark-env.sh")
+	ssh_command(master,"cd sigmoid;cd spark-1.2.0-bin-cdh4/conf;echo 'export SPARK_JAVA_OPTS' >> spark-env.sh")
+	ssh_command(master,"cd sigmoid;cd spark-1.2.0-bin-cdh4/conf;echo 'export SPARK_MASTER_IP=PUT_MASTER_IP_HERE' >> spark-env.sh")
+	ssh_command(master,"cd sigmoid;cd spark-1.2.0-bin-cdh4/conf;echo 'export MASTER=spark://PUT_MASTER_IP_HERE:7077' >> spark-env.sh")
+	ssh_command(master,"cd sigmoid;cd spark-1.2.0-bin-cdh4/conf;echo 'export JAVA_HOME=/usr/lib/jvm/java-1.7.0-openjdk-1.7.0.71.x86_64' >> spark-env.sh")
 	
 
 	for slave in slave_nodes:
-		ssh_command(master,"echo " + slave + " >> sigmoid/spark-0.9.1-bin-cdh4/conf/slaves")
+		ssh_command(master,"echo " + slave + " >> sigmoid/spark-1.2.0-bin-cdh4/conf/slaves")
 
 	
-	ssh_command(master,"sed -i \"s/PUT_MASTER_IP_HERE/$(/sbin/ifconfig eth0 | grep \"inet addr:\" | cut -d: -f2 | cut -d\" \" -f1)/g\" sigmoid/spark-0.9.1-bin-cdh4/conf/spark-env.sh")
+	ssh_command(master,"sed -i \"s/PUT_MASTER_IP_HERE/$(/sbin/ifconfig eth0 | grep \"inet addr:\" | cut -d: -f2 | cut -d\" \" -f1)/g\" sigmoid/spark-1.2.0-bin-cdh4/conf/spark-env.sh")
 	
-	ssh_command(master,"chmod +x sigmoid/spark-0.9.1-bin-cdh4/conf/spark-env.sh")
+	ssh_command(master,"chmod +x sigmoid/spark-1.2.0-bin-cdh4/conf/spark-env.sh")
 
 	print '[ Rsyncing Spark to all slaves ]'
+
+	#Change permissions
+	enable_sudo(master,"sudo chown " + username + ":" + username + " /mnt")
+	i=1
+	for slave in slave_nodes:			
+		enable_sudo(slave,"sudo chown " + username + ":" + username + " /mnt")
+
 
 	for slave in slave_nodes:
 		ssh_command(master,"rsync -za /home/" + username + "/sigmoid " + slave + ":")
 		ssh_command(slave,"mkdir /mnt/spark")
-	
+
 	ssh_command(master,"mkdir /mnt/spark")
 	print '[ Starting Spark Cluster ]'
-	ssh_command(master,"sigmoid/spark-0.9.1-bin-cdh4/sbin/start-all.sh")
+	ssh_command(master,"sigmoid/spark-1.2.0-bin-cdh4/sbin/start-all.sh")
 	
 
-	setup_shark(master_nodes,slave_nodes)
+	#setup_shark(master_nodes,slave_nodes)
 	
 	setup_hadoop(master_nodes,slave_nodes)
 
@@ -422,7 +376,7 @@ def setup_hadoop(master_nodes,slave_nodes):
 	
 	#Configure .bashrc
 	ssh_command(master,"echo '#HADOOP_CONFS' >> .bashrc")
-	ssh_command(master,"echo 'export JAVA_HOME=/usr/lib/jvm/java-1.7.0-openjdk-1.7.0.55.x86_64' >> .bashrc")
+	ssh_command(master,"echo 'export JAVA_HOME=/usr/lib/jvm/java-1.7.0-openjdk-1.7.0.71.x86_64' >> .bashrc")
 	ssh_command(master,"echo 'export HADOOP_INSTALL=/home/`whoami`/sigmoid/hadoop-2.0.0-cdh4.2.0' >> .bashrc")
 	ssh_command(master,"echo 'export PATH=$PATH:\$HADOOP_INSTALL/bin' >> .bashrc")
 	ssh_command(master,"echo 'export PATH=$PATH:\$HADOOP_INSTALL/sbin' >> .bashrc")
@@ -443,7 +397,7 @@ def setup_hadoop(master_nodes,slave_nodes):
 
 	#Config Core-site
 	ssh_command(master,"sed -i \"s/PUT-MASTER-IP/$(/sbin/ifconfig eth0 | grep \"inet addr:\" | cut -d: -f2 | cut -d\" \" -f1)/g\" sigmoid/hadoop-2.0.0-cdh4.2.0/etc/hadoop/core-site.xml")
-
+	
 	#Create data/node dirs
 	ssh_command(master,"mkdir -p /mnt/hadoop/hdfs/namenode;mkdir -p /mnt/hadoop/hdfs/datanode")
 	#Config slaves
@@ -511,8 +465,8 @@ def real_main():
 	print "[ Script Started ]"	
 	#Read the arguments
 	read_args()
-	#Make sure gcutil is accessible.
-	check_gcutils()
+	#Make sure gcloud is accessible.
+	check_gcloud()
 
 	#Launch the cluster
 	launch_cluster()
