@@ -70,25 +70,28 @@ def read_args():
 		cluster_name = sys.argv[2]
 		try:
 
-			command = 'gcutil --project=' + project + ' listinstances --columns=name,external-ip --format=csv'
+			command = 'gcloud compute --project ' + project + ' instances list --format json'
 			output = subprocess.check_output(command, shell=True)
-			output = output.split("\n")
-	
+			data = json.loads(output)
 			master_nodes=[]
 			slave_nodes=[]
 
-			for line in output:
-				if len(line) >= 5:
-					host_name = line.split(",")[0]
-					host_ip = line.split(",")[1]
+			for instance in data:
+
+				try:
+					host_name = instance['name']		
+					host_ip = instance['networkInterfaces'][0]['accessConfigs'][0]['natIP']
 					if host_name == cluster_name + '-master':
-						command = 'gcutil deleteinstance ' + host_name + ' --project=' + project
+						command = 'gcloud compute instances delete ' + host_name + ' --project ' + project
 						command = shlex.split(command)		
 						subprocess.call(command)
 					elif cluster_name + '-slave' in host_name:
-						command = 'gcutil deleteinstance ' + host_name + ' --project=' + project
+						command = 'gcloud compute instances delete ' + host_name + ' --project ' + project
 						command = shlex.split(command)		
-						subprocess.call(command)					
+						subprocess.call(command)
+
+				except:
+					pass				
 
 		except:
 			print "Failed to Delete instances"
