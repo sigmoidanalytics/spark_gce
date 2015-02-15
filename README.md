@@ -17,7 +17,7 @@ Usage
 > ***spark_gce.py project-name number-of-slaves slave-type master-type identity-file zone cluster-name***
 >
 >> 
->> - **project-name**: Name of the project where you are going to launch your spark cluster.
+>> - **project-id**: Project ID of the project where you are going to launch your spark cluster.
 >> 
 >> - **number-of-slave**: Number of slaves that you want to launch.
 >>
@@ -34,7 +34,7 @@ Usage
 >
 > ***spark_gce.py project-name cluster-name destroy***
 >
->> - **project-name:** Name of the project where the spark cluster is at.
+>> - **project-id:** Project id of the project where the spark cluster is at.
 >> - **cluster-name:** Name of the cluster that you are going to destroy.
 
 
