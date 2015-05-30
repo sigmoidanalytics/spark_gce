@@ -330,7 +330,7 @@ def setup_spark(master_nodes,slave_nodes):
 	ssh_command(master,"cd sigmoid;cd spark-1.2.0-bin-cdh4/conf;echo 'export SPARK_JAVA_OPTS' >> spark-env.sh")
 	ssh_command(master,"cd sigmoid;cd spark-1.2.0-bin-cdh4/conf;echo 'export SPARK_MASTER_IP=PUT_MASTER_IP_HERE' >> spark-env.sh")
 	ssh_command(master,"cd sigmoid;cd spark-1.2.0-bin-cdh4/conf;echo 'export MASTER=spark://PUT_MASTER_IP_HERE:7077' >> spark-env.sh")
-	ssh_command(master,"cd sigmoid;cd spark-1.2.0-bin-cdh4/conf;echo 'export JAVA_HOME=/usr/lib/jvm/java-1.7.0-openjdk-1.7.0.75.x86_64' >> spark-env.sh")
+	ssh_command(master,"cd sigmoid;cd spark-1.2.0-bin-cdh4/conf;echo 'export JAVA_HOME=/usr/lib/jvm/java-1.7.0-openjdk.x86_64' >> spark-env.sh")
 	
 
 	for slave in slave_nodes:
@@ -379,7 +379,7 @@ def setup_hadoop(master_nodes,slave_nodes):
 	
 	#Configure .bashrc
 	ssh_command(master,"echo '#HADOOP_CONFS' >> .bashrc")
-	ssh_command(master,"echo 'export JAVA_HOME=/usr/lib/jvm/java-1.7.0-openjdk-1.7.0.75.x86_64' >> .bashrc")
+	ssh_command(master,"echo 'export JAVA_HOME=/usr/lib/jvm/java-1.7.0-openjdk.x86_64' >> .bashrc")
 	ssh_command(master,"echo 'export HADOOP_INSTALL=/home/`whoami`/sigmoid/hadoop-2.0.0-cdh4.2.0' >> .bashrc")
 	ssh_command(master,"echo 'export PATH=$PATH:\$HADOOP_INSTALL/bin' >> .bashrc")
 	ssh_command(master,"echo 'export PATH=$PATH:\$HADOOP_INSTALL/sbin' >> .bashrc")
